@@ -4,7 +4,11 @@ import android.app.PendingIntent
 import android.content.Intent
 import androidx.media3.common.*
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.audio.TeeAudioProcessor
 import androidx.media3.session.*
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import com.google.common.collect.ImmutableList
@@ -23,6 +27,7 @@ import kotlinx.coroutines.*
 class MusicService : MediaLibraryService() {
     @Inject lateinit var repo: MusicRepository
     @Inject lateinit var settings: Settings
+    @Inject lateinit var audioLevels: AudioLevels
     private lateinit var player: ExoPlayer
     private lateinit var session: MediaLibrarySession
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -31,7 +36,23 @@ class MusicService : MediaLibraryService() {
     override fun onCreate() {
         super.onCreate()
         player =
-            ExoPlayer.Builder(this)
+            ExoPlayer.Builder(
+                    this,
+                    object : DefaultRenderersFactory(this) {
+                        override fun buildAudioSink(
+                            context: android.content.Context,
+                            enableFloatOutput: Boolean,
+                            enableAudioTrackPlaybackParams: Boolean,
+                        ): AudioSink =
+                            DefaultAudioSink.Builder(context)
+                                .setEnableFloatOutput(false)
+                                .setEnableAudioOutputPlaybackParameters(
+                                    enableAudioTrackPlaybackParams
+                                )
+                                .setAudioProcessors(arrayOf(TeeAudioProcessor(audioLevels)))
+                                .build()
+                    },
+                )
                 .setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(C.USAGE_MEDIA)

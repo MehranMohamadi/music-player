@@ -30,7 +30,12 @@ data class PlaybackState(
 )
 
 @Singleton
-class PlaybackConnection @Inject constructor(@ApplicationContext private val context: Context) {
+class PlaybackConnection
+@Inject
+constructor(
+    @ApplicationContext private val context: Context,
+    val audioLevels: AudioLevels,
+) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var controller: MediaController? = null
     private val state = MutableStateFlow(PlaybackState())

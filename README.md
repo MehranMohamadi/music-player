@@ -4,11 +4,13 @@ A native, offline Android music player. Kotlin, Compose Material 3, Media3, Room
 
 ## Download / دانلود
 
-[Download Noor.apk from Releases](https://github.com/MehranMohamadi/music-player/releases/tag/v1.0.0) · [Direct APK](https://github.com/MehranMohamadi/music-player/releases/download/v1.0.0/Noor.apk)
+[Download Noor.apk from Releases](https://github.com/MehranMohamadi/music-player/releases/latest) · [Direct APK](https://github.com/MehranMohamadi/music-player/releases/latest/download/Noor.apk)
 
 فایل `Noor.apk` را از بخش Assets دانلود کنید. اندروید ۱۱ یا بالاتر لازم است. این نسخه با کلید آزمایشی امضا شده است.
 
 The exact optimized test-signed APK is also preserved in [distribution/Noor.apk](distribution/Noor.apk) with its checksum and validation notes. Tag pushes publish these verified bytes through the repository's release workflow; signing keys are never committed.
+
+Version 1.0.1 gives Up Next a stable expandable sheet with a separately scrolling queue. The mini player's waveform shows recent energy from the decoded music PCM at up to 30 updates/second, without microphone permission. Analysis sleeps when the UI is not observing it, and the bars settle when playback pauses. The visualization is a loudness history, not a frequency equalizer.
 
 ## Build and run
 

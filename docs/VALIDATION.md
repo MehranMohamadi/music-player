@@ -1,5 +1,13 @@
 # Validation record — 2026-10-18
 
+## Version 1.0.1 — 2026-10-19
+
+- Up Next now uses a remembered sheet state, a stable 92% viewport height, and a weighted scrolling list. Insets no longer change the sheet's measured expansion anchors during a drag.
+- The mini player's waveform consumes decoded 16-bit PCM through Media3's pass-through TeeAudioProcessor. It calculates a short RMS history at 30 Hz, observes lifecycle state, and animates down when playback stops. No microphone permission was added.
+- **24 unit tests passed, zero failures/errors:** the original 21 plus three PCM-energy regressions covering loudness/silence, preservation of audio buffer position, split decoder buffers, reset, and skipping analysis with no UI observers.
+- `assembleDebug`, `assembleRelease`, `testDebugUnitTest`, and `lintDebug` succeeded (zero lint errors, 19 warnings). Device gesture smoothness and audio-output behavior require a physical device; the worker's original emulator limitation below still applies.
+- The `distribution/Noor.apk` evaluation build uses the same development signing key as version 1.0.0, so it can update that installed version without uninstalling. No signing key is committed.
+
 ## Completed checks
 
 - Android SDK 36, AGP 8.13.2, Gradle wrapper 8.13, Kotlin 2.2.21, JDK 21, Java/Kotlin bytecode target 17.

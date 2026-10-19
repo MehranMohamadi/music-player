@@ -145,7 +145,13 @@ fun MusicApp(vm: MusicViewModel) {
                     enter = slideInVertically() + fadeIn(),
                     exit = slideOutVertically() + fadeOut(),
                 ) {
-                    MiniPlayer(state, { nowPlaying = true }, vm.playback::toggle, vm.playback::next)
+                    MiniPlayer(
+                        state,
+                        vm.playback.audioLevels,
+                        { nowPlaying = true },
+                        vm.playback::toggle,
+                        vm.playback::next,
+                    )
                 }
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.background,

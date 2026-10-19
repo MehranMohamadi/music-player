@@ -2,6 +2,8 @@ package dev.noor.music.presentation
 
 import android.graphics.drawable.BitmapDrawable
 import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
@@ -17,6 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.palette.graphics.Palette
 import coil.imageLoader
 import coil.request.ImageRequest
@@ -30,7 +33,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
-fun MiniPlayer(state: PlaybackState, onOpen: () -> Unit, onToggle: () -> Unit, onNext: () -> Unit) {
+fun MiniPlayer(
+    state: PlaybackState,
+    audioLevels: AudioLevels,
+    onOpen: () -> Unit,
+    onToggle: () -> Unit,
+    onNext: () -> Unit,
+) {
     Surface(
         onClick = onOpen,
         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).fillMaxWidth(),
@@ -61,6 +70,7 @@ fun MiniPlayer(state: PlaybackState, onOpen: () -> Unit, onToggle: () -> Unit, o
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
+                AudioWaveform(audioLevels, state.playing)
                 ActionIcon(
                     if (state.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                     tr("Play or pause", "پخش یا توقف"),
@@ -83,6 +93,30 @@ fun MiniPlayer(state: PlaybackState, onOpen: () -> Unit, onToggle: () -> Unit, o
                 modifier = Modifier.fillMaxWidth().height(2.dp),
                 color = Green,
                 trackColor = Color.White.copy(alpha = .12f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun AudioWaveform(audioLevels: AudioLevels, playing: Boolean) {
+    val levels by audioLevels.flow.collectAsStateWithLifecycle()
+    Row(
+        Modifier.padding(horizontal = 4.dp).size(width = 42.dp, height = 22.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(1.dp),
+    ) {
+        levels.forEach { level ->
+            val height by
+                animateFloatAsState(
+                    if (playing) level else 0f,
+                    animationSpec = tween(85),
+                    label = "Audio energy",
+                )
+            Box(
+                Modifier.weight(1f)
+                    .height((2f + height * 20f).dp)
+                    .background(Green, RoundedCornerShape(2.dp))
             )
         }
     }
@@ -314,14 +348,22 @@ fun NowPlaying(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QueueSheet(state: PlaybackState, playback: PlaybackConnection, onDismiss: () -> Unit) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+    val sheetState = rememberModalBottomSheetState()
+    // Keep the sheet's measured height and expansion anchors independent of the
+    // queue length and the list's scroll position throughout a drag gesture.
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        modifier = Modifier.fillMaxHeight(.92f),
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
+    ) {
+        Column(Modifier.fillMaxSize().navigationBarsPadding().padding(bottom = 12.dp)) {
             Text(
                 tr("Up next", "در ادامه"),
                 Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
                 style = MaterialTheme.typography.headlineMedium,
             )
-            LazyColumn(Modifier.heightIn(max = 560.dp)) {
+            LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
                 itemsIndexed(state.queue, key = { index, item -> "$index:${item.mediaId}" }) {
                     index,
                     item ->

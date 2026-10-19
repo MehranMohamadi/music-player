@@ -1,3 +1,11 @@
+# Version 1.0.1 — 2026-10-19
+
+Debug and optimized release builds succeeded; 24 unit tests passed; lint has zero errors and 19 warnings. The installable `distribution/Noor.apk` uses the same test signing key as 1.0.0. Device drag smoothness and audible playback are unverified in this cloud worker.
+
+| Artifact | Size | SHA-256 |
+| --- | ---: | --- |
+| `distribution/Noor.apk` | 6323238 bytes | `0b6069d9a165f88c12b97817e3815704ce9fa5ee36ded88480f4c53e80fbc443` |
+
 # Build artifacts — 2026-10-18
 
 Final source validation: debug/release builds succeeded; 21 unit tests passed; lint has zero errors. The eight instrumented tests compiled but did not run because the worker's Android system images failed before Noor execution.
