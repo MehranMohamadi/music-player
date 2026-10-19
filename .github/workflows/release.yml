@@ -1,0 +1,32 @@
+name: Publish verified APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to publish
+        required: true
+        default: v1.0.0
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          persist-credentials: false
+      - name: Verify packaged APK
+        run: sha256sum --check distribution/SHA256SUMS
+      - name: Publish APK and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" --verify-tag --title "Noor $RELEASE_TAG" --notes-file distribution/RELEASE_NOTES.md distribution/Noor.apk distribution/SHA256SUMS
