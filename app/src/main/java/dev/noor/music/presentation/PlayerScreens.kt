@@ -127,6 +127,10 @@ fun NowPlaying(
     state: PlaybackState,
     song: Song?,
     playback: PlaybackConnection,
+    waveforms: SongWaveforms,
+    reactions: List<SongReaction>,
+    onReaction: (String) -> Unit,
+    onRemoveReaction: (Long) -> Unit,
     onDismiss: () -> Unit,
     onFavorite: () -> Unit,
     onAdd: () -> Unit,
@@ -156,7 +160,28 @@ fun NowPlaying(
         }
     }
     val background by animateColorAsState(dominant, label = "album background")
-    var seek by remember { mutableStateOf<Float?>(null) }
+    var waveform by
+        remember(state.uri, song?.uri, song?.revision, song?.size, song?.duration) {
+            mutableStateOf(emptyList<Float>())
+        }
+    var waveformFailed by
+        remember(state.uri, song?.uri, song?.revision, song?.size, song?.duration) {
+            mutableStateOf(false)
+        }
+    LaunchedEffect(state.uri, song?.uri, song?.revision, song?.size, song?.duration) {
+        waveform = emptyList()
+        waveformFailed = false
+        if (song != null && song.uri == state.uri) {
+            try {
+                waveform = waveforms.load(song)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                waveformFailed = true
+            }
+        }
+    }
+    var seek by remember(state.uri) { mutableStateOf<Float?>(null) }
     var speedOpen by remember { mutableStateOf(false) }
     Dialog(
         onDismissRequest = onDismiss,
@@ -199,13 +224,16 @@ fun NowPlaying(
                     )
                 }
                 Spacer(Modifier.height(28.dp))
-                Art(
-                    state.artwork,
-                    state.title,
-                    Modifier.widthIn(max = 440.dp).fillMaxWidth().aspectRatio(1f),
-                    round = 16.dp,
-                    description = state.title,
-                )
+                key(state.uri) {
+                    ReactionArtwork(
+                        state.artwork,
+                        state.title,
+                        reactions,
+                        song != null,
+                        onReaction,
+                        onRemoveReaction,
+                    )
+                }
                 Spacer(Modifier.height(32.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -233,25 +261,22 @@ fun NowPlaying(
                     )
                 }
                 Spacer(Modifier.height(12.dp))
-                Slider(
-                    value =
-                        seek
-                            ?: state.position
-                                .toFloat()
-                                .coerceIn(0f, state.duration.coerceAtLeast(1).toFloat()),
-                    onValueChange = { seek = it },
-                    onValueChangeFinished = {
+                WaveformSeekBar(
+                    value = seek ?: state.position.toFloat(),
+                    duration = state.duration.toFloat(),
+                    waveform = waveform,
+                    onChange = { seek = it },
+                    onFinished = {
                         seek?.let { playback.seek(it.toLong()) }
                         seek = null
                     },
-                    valueRange = 0f..state.duration.coerceAtLeast(1).toFloat(),
-                    colors =
-                        SliderDefaults.colors(
-                            thumbColor = Color.White,
-                            activeTrackColor = Color.White,
-                            inactiveTrackColor = Color.White.copy(alpha = .2f),
-                        ),
                 )
+                if (waveform.isEmpty())
+                    Label(
+                        if (waveformFailed) tr("Waveform unavailable", "موج صدا در دسترس نیست")
+                        else tr("Reading waveform…", "در حال خواندن موج صدا…"),
+                        color = Color.White.copy(alpha = .5f),
+                    )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Label(
                         time(seek?.toLong() ?: state.position),

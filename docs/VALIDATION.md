@@ -1,5 +1,16 @@
 # Validation record — 2026-10-18
 
+## Version 1.1.0 — 2026-10-23
+
+- Now Playing has a gray waveform seek bar with green played amplitudes, standard Slider touch/accessibility behavior, and a white position marker. The 96-bin RMS envelope is decoded from the actual file on an IO worker, supports 16-bit/float PCM output, cancels on track change/player dismissal, and caches at most 64 small envelopes in private cache storage. Unsupported/read-failed audio keeps seeking available and shows an unavailable state; no fabricated peaks or microphone access.
+- Cover reactions offer ten emoji and a custom single-grapheme keyboard emoji field. Each tap creates a separate Room row, including duplicates, with persisted normalized coordinates and rotation. New stickers enter with a spring animation. Tapping a sticker lets the user remove just that instance. No application count limit is imposed.
+- Library → Emoji groups the visible library by reaction, counts distinct songs, and opens the normal song list filtered by that emoji. Excluded folders stay excluded. The query observes reaction changes and never duplicates songs for repeated stickers.
+- Database v2 adds only the reactions table and indexes through `MIGRATION_1_2`; no destructive migration. A fixture built from the exported v1 schema upgrades and reopens successfully while preserving favorites, history, collections and order. Reactions survive reopen and rescan and cascade only when the song reference is removed.
+- **31 unit tests passed, zero failures/errors/skipped.** New regressions cover migration/reopen, duplicate reactions and stable positions, emoji filtering/removal, RMS timeline placement/silence/opposite channel phase, and Unicode emoji sequences (family, flags, skin tones, keycaps).
+- `assembleDebug`, `testDebugUnitTest`, `lintDebug`, and `assembleDebugAndroidTest` passed. Lint reports zero errors and 15 warnings. The device test APK compiles and packages successfully; device tests remain unrun.
+- `assembleRelease` also passed with code/resource shrinking and Release vital lint. The signed optimized APK reports versionName `1.1.0`, versionCode `3`, and its verified signing certificate matches `distribution/Noor.apk` (certificate SHA-256 `0be974b117c68b1049f5fa1c71ceaa1c8b862d1504468b9612524e982944e13d`). The current optimized distribution size and checksum are recorded in `docs/ARTIFACTS.md`.
+- Physical-device UI animation, touch/RTL, audible playback during analysis, and decoder performance are **unverified**. This worker has no `/dev/kvm`. The new `WaveformDeviceTest` exercises real MP3/FLAC/OGG decoding and cache reuse on a device; it has not been executed here.
+
 ## Version 1.0.1 — 2026-10-19
 
 - Up Next now uses a remembered sheet state, a stable 92% viewport height, and a weighted scrolling list. Insets no longer change the sheet's measured expansion anchors during a drag.

@@ -12,6 +12,10 @@ The exact optimized test-signed APK is also preserved in [distribution/Noor.apk]
 
 Version 1.0.1 gives Up Next a stable expandable sheet with a separately scrolling queue. The mini player's waveform shows recent energy from the decoded music PCM at up to 30 updates/second, without microphone permission. Analysis sleeps when the UI is not observing it, and the bars settle when playback pauses. The visualization is a loudness history, not a frequency equalizer.
 
+Version 1.1.0 adds a gray waveform seek bar in Now Playing: real decoded file amplitudes turn green up to the current playback position. Analysis runs off the main thread, is cancelled when changing tracks or closing the player, and caches at most 64 small envelopes locally. Until analysis completes (or for unsupported files), the normal seek control remains usable with a status message.
+
+Tap **☺ +** on the cover for ten emoji choices or enter a single emoji from the keyboard. Each tap adds an independent animated sticker at a random position; duplicates and custom emoji have no imposed count limit. Stickers keep their position and rotation across app restarts and library rescans. Tap a sticker to remove just that copy. **Library → Emoji** groups songs by their stickers and lists each matching song once. All reactions live in the phone's private Room database; they do not modify embedded artwork or upload data. Updating from database v1 preserves existing songs, favorites, history, collections and order. Clearing app data or uninstalling removes these local reactions.
+
 ## Build and run
 
 - Android Studio with Android SDK **36** and Build Tools **35.0.0** (AGP's pinned default). Build Tools 36.0.0 is also installed in the cloud workspace for APK inspection.

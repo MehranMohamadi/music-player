@@ -10,6 +10,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.noor.music.data.*
 import dev.noor.music.domain.*
 import dev.noor.music.playback.PlaybackConnection
+import dev.noor.music.playback.SongWaveforms
 import dev.noor.music.storage.*
 import javax.inject.Inject
 import kotlinx.coroutines.*
@@ -25,6 +26,7 @@ constructor(
     val settings: Settings,
     val playback: PlaybackConnection,
     val tags: TagEditor,
+    val waveforms: SongWaveforms,
     @ApplicationContext val context: Context,
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -47,6 +49,7 @@ constructor(
                 favorites = savedStateHandle["query.favorites"] ?: false,
                 collection = savedStateHandle["query.collection"],
                 albumId = savedStateHandle["query.albumId"],
+                emoji = savedStateHandle["query.emoji"],
             )
         )
     val currentSong =
@@ -60,6 +63,25 @@ constructor(
             .flatMapLatest(repo::search)
             .combine(preferences) { songs, p -> songs.filterNot { it.folder in p.excluded } }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val reactions =
+        repo.dao
+            .reactions()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun addReaction(uri: String, emoji: String) = work {
+        repo.dao.addReaction(
+            SongReaction(
+                songUri = uri,
+                emoji = emoji,
+                x = kotlin.random.Random.nextFloat(),
+                y = kotlin.random.Random.nextFloat(),
+                rotation = kotlin.random.Random.nextFloat() * 32f - 16f,
+            )
+        )
+    }
+
+    fun removeReaction(id: Long) = work { repo.dao.removeReaction(id) }
+
     val selection = MutableStateFlow<Set<String>>(emptySet())
     val scanning = MutableStateFlow(false)
     val message = MutableStateFlow<String?>(null)
@@ -87,6 +109,7 @@ constructor(
                 savedStateHandle["query.favorites"] = q.favorites
                 savedStateHandle["query.collection"] = q.collection
                 savedStateHandle["query.albumId"] = q.albumId
+                savedStateHandle["query.emoji"] = q.emoji
             }
         }
         playback.connect()

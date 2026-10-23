@@ -52,6 +52,37 @@ class MusicDatabaseTest {
     }
 
     @Test
+    fun repeatedReactionsKeepPositionsSurviveRescanAndFilterWithoutDuplicateSongs() = runTest {
+        val a = song(1)
+        val b = song(2)
+        dao.upsert(listOf(a, b))
+        val first = SongReaction(songUri = a.uri, emoji = "🔥", x = .2f, y = .7f, rotation = -12f)
+        val firstId = dao.addReaction(first)
+        val secondId = dao.addReaction(first.copy(x = .8f))
+        dao.addReaction(first.copy(songUri = b.uri, emoji = "💔"))
+        dao.sync(listOf(a.copy(title = "New title"), b))
+        val saved = dao.reactions().first()
+        assertEquals(first.copy(id = firstId), saved.first())
+        assertNotEquals(firstId, secondId)
+        assertEquals(
+            listOf(a.uri),
+            dao.search("%", "TITLE", null, null, null, false, null, emoji = "🔥").first().map {
+                it.uri
+            },
+        )
+        dao.removeReaction(firstId)
+        assertEquals(2, dao.reactions().first().size)
+        assertEquals(
+            listOf(a.uri),
+            dao.search("%", "TITLE", null, null, null, false, null, emoji = "🔥").first().map {
+                it.uri
+            },
+        )
+        dao.remove(listOf(a.uri))
+        assertEquals(listOf("💔"), dao.reactions().first().map { it.emoji })
+    }
+
+    @Test
     fun bulkCollectionAdditionSpansBindBatchesAndKeepsOrder() = runTest {
         val songs = (1L..650L).map(::song)
         dao.upsert(songs)

@@ -16,7 +16,9 @@ object Injection {
     @Provides
     @Singleton
     fun database(@ApplicationContext c: Context): MusicDatabase =
-        Room.databaseBuilder(c, MusicDatabase::class.java, "noor.db").build()
+        Room.databaseBuilder(c, MusicDatabase::class.java, "noor.db")
+            .addMigrations(MIGRATION_1_2)
+            .build()
 
     @Provides
     fun collectionStore(repo: MusicRepository): dev.noor.music.domain.CollectionStore = repo

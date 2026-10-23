@@ -26,6 +26,7 @@ class MusicRepository @Inject constructor(val dao: MusicDao, private val scanner
             q.favorites,
             q.collection,
             q.albumId,
+            q.emoji,
         )
 
     suspend fun refresh() = scanLock.withLock { dao.sync(scanner.scan()) }

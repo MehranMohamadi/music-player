@@ -28,6 +28,7 @@ fun MusicApp(vm: MusicViewModel) {
     val prefs by vm.preferences.collectAsStateWithLifecycle()
     val all by vm.all.collectAsStateWithLifecycle()
     val songs by vm.songs.collectAsStateWithLifecycle()
+    val reactions by vm.reactions.collectAsStateWithLifecycle()
     val collections by vm.collections.collectAsStateWithLifecycle()
     val query by vm.query.collectAsStateWithLifecycle()
     val selected by vm.selection.collectAsStateWithLifecycle()
@@ -314,7 +315,9 @@ fun MusicApp(vm: MusicViewModel) {
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(listOf("songs", "collections", "albums", "artists", "folders")) { kind ->
+                    items(
+                        listOf("songs", "collections", "emojis", "albums", "artists", "folders")
+                    ) { kind ->
                         FilterChip(
                             selected = tab == kind,
                             onClick = { library(kind) },
@@ -323,6 +326,7 @@ fun MusicApp(vm: MusicViewModel) {
                                     when (kind) {
                                         "songs" -> tr("Songs", "آهنگ‌ها")
                                         "collections" -> tr("Collections", "مجموعه‌ها")
+                                        "emojis" -> tr("Emoji", "ایموجی‌ها")
                                         "albums" -> tr("Albums", "آلبوم‌ها")
                                         "artists" -> tr("Artists", "هنرمندان")
                                         else -> tr("Folders", "پوشه‌ها")
@@ -356,7 +360,7 @@ fun MusicApp(vm: MusicViewModel) {
                 )
             Box(Modifier.weight(1f)) {
                 scrollStates.SaveableStateProvider(
-                    "$screen:$tab:${query.collection}:${query.folder}:${query.artist}:${query.album}:${query.albumId}:${query.favorites}"
+                    "$screen:$tab:${query.collection}:${query.folder}:${query.artist}:${query.album}:${query.albumId}:${query.favorites}:${query.emoji}"
                 ) {
                     when {
                         screen == "home" ->
@@ -377,6 +381,10 @@ fun MusicApp(vm: MusicViewModel) {
                                 { collectionMenu = it },
                                 { createUris = emptyList() },
                             )
+                        screen == "library" && tab == "emojis" ->
+                            EmojiGroupsScreen(all, reactions) { emoji ->
+                                navigate(LibraryQuery(emoji = emoji), emoji)
+                            }
                         screen == "library" && tab in listOf("albums", "artists", "folders") ->
                             GroupsScreen(all, tab, ::navigate)
                         else ->
@@ -455,6 +463,10 @@ fun MusicApp(vm: MusicViewModel) {
             state,
             current,
             vm.playback,
+            vm.waveforms,
+            reactions.filter { it.songUri == state.uri },
+            { emoji -> state.uri?.let { vm.addReaction(it, emoji) } },
+            vm::removeReaction,
             { nowPlaying = false },
             { current?.let(vm::favorite) },
             { state.uri?.let { addUris = listOf(it) } },

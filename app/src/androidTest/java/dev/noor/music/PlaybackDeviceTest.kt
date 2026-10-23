@@ -13,6 +13,7 @@ import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.noor.music.data.Settings
+import dev.noor.music.database.MIGRATION_1_2
 import dev.noor.music.database.MusicDatabase
 import dev.noor.music.domain.Song
 import dev.noor.music.playback.MusicService
@@ -48,7 +49,10 @@ class PlaybackDeviceTest {
                     put(MediaStore.Audio.Media.IS_PENDING, 1)
                 },
             )!!
-        val database = Room.databaseBuilder(context, MusicDatabase::class.java, "noor.db").build()
+        val database =
+            Room.databaseBuilder(context, MusicDatabase::class.java, "noor.db")
+                .addMigrations(MIGRATION_1_2)
+                .build()
         var controller: MediaController? = null
         try {
             instrumentation.context.assets.open("long-tone.mp3").use { input ->

@@ -91,6 +91,7 @@ data class LibraryQuery(
     val favorites: Boolean = false,
     val collection: Long? = null,
     val albumId: Long? = null,
+    val emoji: String? = null,
 )
 
 fun sqlSearch(text: String): String =
@@ -107,3 +108,27 @@ object CollectionOrder {
         return uris.toMutableList().apply { add(to, removeAt(from)) }
     }
 }
+
+/** Private, per-song decorations. Duplicate emoji are separate instances. */
+@Entity(
+    tableName = "song_reactions",
+    foreignKeys =
+        [
+            ForeignKey(
+                entity = Song::class,
+                parentColumns = ["uri"],
+                childColumns = ["songUri"],
+                onDelete = ForeignKey.CASCADE,
+            )
+        ],
+    indices = [Index("songUri"), Index("emoji")],
+)
+data class SongReaction(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val songUri: String,
+    val emoji: String,
+    val x: Float,
+    val y: Float,
+    val rotation: Float,
+    val createdAt: Long = System.currentTimeMillis(),
+)

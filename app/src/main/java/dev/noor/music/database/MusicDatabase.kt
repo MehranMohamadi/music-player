@@ -1,11 +1,20 @@
 package dev.noor.music.database
 
 import androidx.room.*
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import dev.noor.music.domain.*
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 abstract class MusicDao {
+    @Query("SELECT * FROM song_reactions ORDER BY id")
+    abstract fun reactions(): Flow<List<SongReaction>>
+
+    @Insert abstract suspend fun addReaction(reaction: SongReaction): Long
+
+    @Query("DELETE FROM song_reactions WHERE id=:id") abstract suspend fun removeReaction(id: Long)
+
     @Query("SELECT * FROM songs ORDER BY title COLLATE NOCASE") abstract fun all(): Flow<List<Song>>
 
     @Query("SELECT * FROM songs") abstract suspend fun snapshot(): List<Song>
@@ -18,6 +27,7 @@ abstract class MusicDao {
         AND (:favorite=0 OR favorite=1) AND (:folder IS NULL OR folder=:folder)
         AND (:artist IS NULL OR artist=:artist) AND (:album IS NULL OR album=:album)
         AND (:albumKey IS NULL OR songs.albumId=:albumKey)
+        AND (:emoji IS NULL OR EXISTS (SELECT 1 FROM song_reactions r WHERE r.songUri=songs.uri AND r.emoji=:emoji))
         AND (title LIKE :text ESCAPE '\' OR artist LIKE :text ESCAPE '\' OR album LIKE :text ESCAPE '\')
         ORDER BY CASE WHEN :collection IS NOT NULL THEN members.position END,
         CASE WHEN :sort='ADDED' THEN added END DESC,
@@ -34,6 +44,7 @@ abstract class MusicDao {
         favorite: Boolean,
         collection: Long?,
         albumKey: Long? = null,
+        emoji: String? = null,
     ): Flow<List<Song>>
 
     @Query("SELECT uri FROM songs WHERE uri IN (:uris)")
@@ -151,10 +162,30 @@ abstract class MusicDao {
 }
 
 @Database(
-    entities = [Song::class, MusicCollection::class, CollectionMember::class],
-    version = 1,
+    entities = [Song::class, MusicCollection::class, CollectionMember::class, SongReaction::class],
+    version = 2,
     exportSchema = true,
 )
 abstract class MusicDatabase : RoomDatabase() {
     abstract fun music(): MusicDao
 }
+
+val MIGRATION_1_2 =
+    object : Migration(1, 2) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """CREATE TABLE IF NOT EXISTS `song_reactions` (
+            `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            `songUri` TEXT NOT NULL, `emoji` TEXT NOT NULL,
+            `x` REAL NOT NULL, `y` REAL NOT NULL, `rotation` REAL NOT NULL,
+            `createdAt` INTEGER NOT NULL,
+            FOREIGN KEY(`songUri`) REFERENCES `songs`(`uri`) ON UPDATE NO ACTION ON DELETE CASCADE)"""
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_song_reactions_songUri` ON `song_reactions` (`songUri`)"
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_song_reactions_emoji` ON `song_reactions` (`emoji`)"
+            )
+        }
+    }
