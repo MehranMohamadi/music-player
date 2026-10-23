@@ -22,10 +22,53 @@ class ReactionMigrationTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val name = "reaction-upgrade-test.db"
         context.deleteDatabase(name)
+        createLegacyDatabase(context, name, 1)
+        fun open() =
+            Room.databaseBuilder(context, MusicDatabase::class.java, name)
+                .addMigrations(MIGRATION_1_2)
+                .allowMainThreadQueries()
+                .build()
+        try {
+            val reaction =
+                SongReaction(
+                    songUri = "song:1",
+                    emoji = "🥹",
+                    x = .25f,
+                    y = .75f,
+                    rotation = 9f,
+                    centered = true,
+                )
+            var savedId = 0L
+            val migrated = open()
+            try {
+                val db = migrated
+                val song = db.music().snapshot().single()
+                assertTrue(song.favorite)
+                assertEquals(7, song.playCount)
+                assertEquals(99L, song.revision)
+                assertEquals(listOf("song:1"), db.music().members(1))
+                savedId = db.music().addReaction(reaction)
+            } finally {
+                migrated.close()
+            }
+            val reopened = open()
+            try {
+                val db = reopened
+                assertEquals(listOf(reaction.copy(id = savedId)), db.music().reactions().first())
+                assertEquals("My collection", db.music().collections().first().single().name)
+            } finally {
+                reopened.close()
+            }
+        } finally {
+            context.deleteDatabase(name)
+        }
+    }
+
+    private fun createLegacyDatabase(context: Context, name: String, version: Int) {
         val file = context.getDatabasePath(name).apply { parentFile!!.mkdirs() }
         val schema =
             javaClass
-                .getResourceAsStream("/dev.noor.music.database.MusicDatabase/1.json")!!
+                .getResourceAsStream("/dev.noor.music.database.MusicDatabase/$version.json")!!
                 .bufferedReader()
                 .use { JSONObject(it.readText()).getJSONObject("database") }
         SQLiteDatabase.openOrCreateDatabase(file, null).use { old ->
@@ -52,34 +95,47 @@ class ReactionMigrationTest {
             )
             old.execSQL("INSERT INTO collections VALUES (1, 'My collection', NULL)")
             old.execSQL("INSERT INTO members VALUES (1, 'song:1', 0)")
-            old.version = 1
+            if (version == 2)
+                old.execSQL(
+                    "INSERT INTO song_reactions VALUES (1, 'song:1', '❤️', 0.25, 0.75, 9, 1234)"
+                )
+            old.version = version
         }
+    }
+
+    @Test
+    fun versionTwoKeepsLegacyPositionsAndPersistsNewTapPositions() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val name = "reaction-v2-upgrade-test.db"
+        context.deleteDatabase(name)
+        createLegacyDatabase(context, name, 2)
         fun open() =
             Room.databaseBuilder(context, MusicDatabase::class.java, name)
                 .addMigrations(MIGRATION_1_2)
                 .allowMainThreadQueries()
                 .build()
+        val legacy =
+            SongReaction(
+                id = 1,
+                songUri = "song:1",
+                emoji = "❤️",
+                x = .25f,
+                y = .75f,
+                rotation = 9f,
+                createdAt = 1234,
+            )
+        var placed = legacy.copy(id = 0, emoji = "🔥", x = .9f, y = .1f, centered = true)
         try {
-            val reaction =
-                SongReaction(songUri = "song:1", emoji = "🥹", x = .25f, y = .75f, rotation = 9f)
-            var savedId = 0L
             val migrated = open()
             try {
-                val db = migrated
-                val song = db.music().snapshot().single()
-                assertTrue(song.favorite)
-                assertEquals(7, song.playCount)
-                assertEquals(99L, song.revision)
-                assertEquals(listOf("song:1"), db.music().members(1))
-                savedId = db.music().addReaction(reaction)
+                assertEquals(listOf(legacy), migrated.music().reactions().first())
+                placed = placed.copy(id = migrated.music().addReaction(placed))
             } finally {
                 migrated.close()
             }
             val reopened = open()
             try {
-                val db = reopened
-                assertEquals(listOf(reaction.copy(id = savedId)), db.music().reactions().first())
-                assertEquals("My collection", db.music().collections().first().single().name)
+                assertEquals(listOf(legacy, placed), reopened.music().reactions().first())
             } finally {
                 reopened.close()
             }

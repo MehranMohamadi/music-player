@@ -163,7 +163,8 @@ abstract class MusicDao {
 
 @Database(
     entities = [Song::class, MusicCollection::class, CollectionMember::class, SongReaction::class],
-    version = 2,
+    version = 3,
+    autoMigrations = [AutoMigration(from = 2, to = 3)],
     exportSchema = true,
 )
 abstract class MusicDatabase : RoomDatabase() {

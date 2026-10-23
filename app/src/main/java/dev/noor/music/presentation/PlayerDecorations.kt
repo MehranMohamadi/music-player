@@ -4,14 +4,16 @@ import android.icu.text.BreakIterator
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,15 +23,23 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.*
 import dev.noor.music.common.*
 import dev.noor.music.domain.SongReaction
 import java.util.Locale
+import kotlin.math.sin
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
-val ReactionEmoji = listOf("🔥", "❤️", "😍", "🥹", "😎", "💃", "🥳", "🌙", "💔", "✨")
+val ReactionEmoji = listOf("❤️", "🔥", "😍", "🥹", "😎", "💃", "🥳", "🌙", "💔", "✨")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,73 +48,136 @@ fun ReactionArtwork(
     title: String,
     reactions: List<SongReaction>,
     enabled: Boolean,
-    onAdd: (String) -> Unit,
+    onAdd: (String, Float, Float) -> Unit,
     onRemove: (Long) -> Unit,
 ) {
-    val addDescription = tr("Add emoji to cover", "افزودن ایموجی به کاور")
+    val selectDescription = tr("Choose emoji", "انتخاب ایموجی")
+    val placeDescription = tr("Place selected emoji on cover", "گذاشتن ایموجی انتخاب‌شده روی کاور")
+    val removeDescription = tr("Remove emoji", "حذف ایموجی")
+    val currentReactions by rememberUpdatedState(reactions)
+    val placeReaction by rememberUpdatedState(onAdd)
+    var selectedEmoji by rememberSaveable { mutableStateOf("❤️") }
     var picker by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf<SongReaction?>(null) }
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        BoxWithConstraints(
-            Modifier.widthIn(max = 440.dp)
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(16.dp))
-        ) {
-            Art(artwork, title, Modifier.fillMaxSize(), round = 16.dp, description = title)
-            reactions.forEach { reaction ->
-                key(reaction.id) {
-                    val fresh = remember {
-                        System.currentTimeMillis() - reaction.createdAt in 0..1500
+    Column(Modifier.widthIn(max = 440.dp).fillMaxWidth()) {
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            BoxWithConstraints(
+                Modifier.fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .pointerInput(enabled, selectedEmoji) {
+                        detectTapGestures(
+                            onTap = { point ->
+                                if (enabled && size.width > 0 && size.height > 0) {
+                                    placeReaction(
+                                        selectedEmoji,
+                                        (point.x / size.width).coerceIn(0f, 1f),
+                                        (point.y / size.height).coerceIn(0f, 1f),
+                                    )
+                                }
+                            },
+                            onLongPress = { point ->
+                                val diameter = 48.dp.toPx()
+                                removing =
+                                    currentReactions.asReversed().firstOrNull { reaction ->
+                                        val (x, y) =
+                                            reactionTopLeft(
+                                                reaction,
+                                                size.width.toFloat(),
+                                                size.height.toFloat(),
+                                                diameter,
+                                            )
+                                        point.x in x..(x + diameter) && point.y in y..(y + diameter)
+                                    }
+                            },
+                        )
                     }
-                    val entrance = remember { Animatable(if (fresh) 0f else 1f) }
-                    LaunchedEffect(Unit) {
-                        if (fresh)
-                            entrance.animateTo(
-                                1f,
-                                spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-                            )
+                    .semantics {
+                        contentDescription = title
+                        onClick(label = placeDescription) {
+                            if (enabled) onAdd(selectedEmoji, .5f, .5f)
+                            enabled
+                        }
                     }
-                    Box(
-                        Modifier.offset(
-                                x = (maxWidth - 48.dp) * reaction.x,
-                                y = (maxHeight - 96.dp) * reaction.y,
-                            )
-                            .size(48.dp)
-                            .graphicsLayer {
-                                scaleX = entrance.value
-                                scaleY = entrance.value
-                                alpha = entrance.value.coerceIn(0f, 1f)
-                                translationY = (1f - entrance.value) * -100f
-                                rotationZ = reaction.rotation + (1f - entrance.value) * 35f
-                            }
-                            .clickable { removing = reaction }
-                            .semantics { contentDescription = "$title ${reaction.emoji}" },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(reaction.emoji, fontSize = 32.sp)
+            ) {
+                Art(artwork, title, Modifier.fillMaxSize(), round = 16.dp)
+                reactions.forEach { reaction ->
+                    key(reaction.id) {
+                        val fresh = remember {
+                            System.currentTimeMillis() - reaction.createdAt in 0..1500
+                        }
+                        val entrance = remember { Animatable(if (fresh) 0f else 1f) }
+                        val wiggle = remember { Animatable(if (fresh) 0f else 1f) }
+                        LaunchedEffect(Unit) {
+                            if (fresh)
+                                coroutineScope {
+                                    launch {
+                                        entrance.animateTo(
+                                            1f,
+                                            spring(
+                                                dampingRatio = .42f,
+                                                stiffness = Spring.StiffnessLow,
+                                            ),
+                                        )
+                                    }
+                                    launch {
+                                        delay(150)
+                                        wiggle.animateTo(1f, tween(1100))
+                                    }
+                                }
+                        }
+                        val (left, top) =
+                            reactionTopLeft(reaction, maxWidth.value, maxHeight.value, 48f)
+                        Box(
+                            Modifier.offset(left.dp, top.dp)
+                                .size(48.dp)
+                                .graphicsLayer {
+                                    scaleX = entrance.value
+                                    scaleY = entrance.value
+                                    alpha = entrance.value.coerceIn(0f, 1f)
+                                    translationY = (1f - entrance.value) * -48.dp.toPx()
+                                    rotationZ =
+                                        reaction.rotation +
+                                            (1f - entrance.value) * 35f +
+                                            sin(wiggle.value * 4f * Math.PI.toFloat()) *
+                                                (1f - wiggle.value) *
+                                                14f
+                                }
+                                .semantics {
+                                    contentDescription = reaction.emoji
+                                    onLongClick(label = removeDescription) {
+                                        removing = reaction
+                                        true
+                                    }
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(reaction.emoji, fontSize = 32.sp)
+                        }
                     }
                 }
             }
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(top = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                tr(
+                    "Tap the cover to place; hold an emoji to remove.",
+                    "برای افزودن، کاور را بزن؛ برای حذف، ایموجی را نگه دار.",
+                ),
+                Modifier.weight(1f).padding(end = 8.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = .7f),
+            )
             FilledTonalButton(
                 onClick = { picker = true },
                 enabled = enabled,
-                modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp),
-                colors =
-                    ButtonDefaults.filledTonalButtonColors(
-                        containerColor = Color.Black.copy(alpha = .65f),
-                        contentColor = Color.White,
-                    ),
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                modifier = Modifier.semantics { contentDescription = selectDescription },
             ) {
-                Text(
-                    "☺ +",
-                    fontSize = 20.sp,
-                    modifier =
-                        Modifier.semantics {
-                            contentDescription = addDescription
-                        },
-                )
+                Text("$selectedEmoji ▾", fontSize = 24.sp)
             }
         }
     }
@@ -114,13 +187,13 @@ fun ReactionArtwork(
         ModalBottomSheet(onDismissRequest = { picker = false }) {
             Column(Modifier.fillMaxWidth().navigationBarsPadding().imePadding().padding(20.dp)) {
                 Text(
-                    tr("How does this song feel?", "با این آهنگ چه حسی داری؟"),
+                    tr("Choose an emoji", "یک ایموجی انتخاب کن"),
                     style = MaterialTheme.typography.titleLarge,
                 )
                 Text(
                     tr(
-                        "Tap as often as you like. Saved on this phone.",
-                        "هر چند بار که دوست داری بزن؛ روی همین گوشی ذخیره می‌شود.",
+                        "Choose here, then tap anywhere on the cover. Heart is selected by default.",
+                        "ایموجی را انتخاب کن، سپس روی کاور بزن. قلب انتخاب پیش‌فرض است.",
                     ),
                     Modifier.padding(vertical = 8.dp),
                     style = MaterialTheme.typography.bodySmall,
@@ -129,8 +202,20 @@ fun ReactionArtwork(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         row.forEach { emoji ->
                             TextButton(
-                                onClick = { onAdd(emoji) },
-                                modifier = Modifier.size(56.dp),
+                                onClick = {
+                                    selectedEmoji = emoji
+                                    picker = false
+                                },
+                                colors =
+                                    ButtonDefaults.textButtonColors(
+                                        containerColor =
+                                            if (selectedEmoji == emoji) Green.copy(alpha = .2f)
+                                            else Color.Transparent
+                                    ),
+                                modifier =
+                                    Modifier.size(56.dp).semantics {
+                                        selected = selectedEmoji == emoji
+                                    },
                             ) {
                                 Text(emoji, fontSize = 28.sp)
                             }
@@ -154,8 +239,14 @@ fun ReactionArtwork(
                             )
                         },
                     )
-                    TextButton(onClick = { onAdd(custom.trim()) }, enabled = valid) {
-                        Text(tr("Add", "افزودن"))
+                    TextButton(
+                        onClick = {
+                            selectedEmoji = custom.trim()
+                            picker = false
+                        },
+                        enabled = valid,
+                    ) {
+                        Text(tr("Select", "انتخاب"))
                     }
                 }
                 TextButton(onClick = { picker = false }, modifier = Modifier.align(Alignment.End)) {

@@ -1,3 +1,13 @@
+# Version 1.1.1 — 2026-10-23
+
+Optimized, non-debuggable Release APK with code/resource shrinking and verified signing certificate matching previous versions. Package `dev.noor.music`, versionCode `4`, versionName `1.1.1`, minimum API 30. ZIP alignment for 16 KiB pages verifies; no INTERNET permission.
+
+| Artifact | Size | SHA-256 |
+| --- | ---: | --- |
+| `distribution/Noor.apk` | 6372390 bytes (6.08 MiB) | `2864864f73fdc99276c7cebbc54008bfdf925b17a14bc46af2e8acc43e0b46bf` |
+
+`assembleRelease`, `assembleDebug`, `testDebugUnitTest`, `lintDebug` and `assembleDebugAndroidTest` succeeded. All 36 unit tests passed; lint reports zero errors and 15 warnings. Device touch/long-press feel and animation remain unverified; device tests are compiled but unrun. The development/test signing key is retained outside the repository.
+
 # Version 1.1.0 — 2026-10-23
 
 Optimized Release APK built with code/resource shrinking and aligned for 16 KiB native-library pages. The installable APK's v3 signature verifies and its certificate matches the previous distribution, so it supports an in-place update. Package `dev.noor.music`, versionCode `3`, versionName `1.1.0`, minimum API 30. The Release APK is not debuggable and has no INTERNET permission.

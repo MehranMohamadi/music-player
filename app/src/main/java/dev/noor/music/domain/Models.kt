@@ -1,5 +1,6 @@
 package dev.noor.music.domain
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -131,4 +132,5 @@ data class SongReaction(
     val y: Float,
     val rotation: Float,
     val createdAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(defaultValue = "0") val centered: Boolean = false,
 )

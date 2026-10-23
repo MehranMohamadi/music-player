@@ -465,7 +465,7 @@ fun MusicApp(vm: MusicViewModel) {
             vm.playback,
             vm.waveforms,
             reactions.filter { it.songUri == state.uri },
-            { emoji -> state.uri?.let { vm.addReaction(it, emoji) } },
+            { emoji, x, y -> state.uri?.let { vm.addReaction(it, emoji, x, y) } },
             vm::removeReaction,
             { nowPlaying = false },
             { current?.let(vm::favorite) },

@@ -129,7 +129,7 @@ fun NowPlaying(
     playback: PlaybackConnection,
     waveforms: SongWaveforms,
     reactions: List<SongReaction>,
-    onReaction: (String) -> Unit,
+    onReaction: (String, Float, Float) -> Unit,
     onRemoveReaction: (Long) -> Unit,
     onDismiss: () -> Unit,
     onFavorite: () -> Unit,

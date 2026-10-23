@@ -68,13 +68,15 @@ constructor(
             .reactions()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun addReaction(uri: String, emoji: String) = work {
+    fun addReaction(uri: String, emoji: String, x: Float, y: Float) = work {
+        require(x.isFinite() && y.isFinite())
         repo.dao.addReaction(
             SongReaction(
                 songUri = uri,
                 emoji = emoji,
-                x = kotlin.random.Random.nextFloat(),
-                y = kotlin.random.Random.nextFloat(),
+                x = x.coerceIn(0f, 1f),
+                y = y.coerceIn(0f, 1f),
+                centered = true,
                 rotation = kotlin.random.Random.nextFloat() * 32f - 16f,
             )
         )

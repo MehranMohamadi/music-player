@@ -1,5 +1,15 @@
 # Validation record — 2026-10-18
 
+## Version 1.1.1 — 2026-10-23
+
+- Cover reactions now use a two-step flow: choose an emoji below the artwork, then tap the artwork to place it. Heart ❤️ is the default selection. Picker choices (including custom keyboard emoji) select and close the picker without creating a sticker.
+- Each tap stores the selected emoji centered on its normalized touch point. Edge taps keep the sticker inside the cover. Repeated taps, including taps on an existing sticker, create independent copies. Pointer input remains stable while database updates arrive, avoiding cancellation of an in-progress tap.
+- New stickers enter with a spring scale/bounce and a short decaying rotational wiggle, then settle. Hold a sticker to remove its topmost copy; accessibility actions support placing a sticker at the center and removing individual stickers.
+- Database v3 adds a default-false `centered` flag through Room's generated v2→v3 migration. Existing stickers retain their original layout formula and coordinates. New stickers store normalized centers. Exported v1 and v2 database fixtures both upgrade successfully, and reopen checks verify old and new placement records.
+- **36 unit tests passed, zero failures/errors/skipped.** Placement regressions cover centered taps, resizing, corner clamping, tiny covers and exact legacy positions; migration/reopen checks cover v1 and v2 upgrades. `assembleDebug`, `testDebugUnitTest`, and `lintDebug` passed with zero lint errors and 15 warnings.
+- `assembleRelease` and `assembleDebugAndroidTest` also passed. The optimized distribution is signed with the existing certificate; its exact size/checksum are recorded in `docs/ARTIFACTS.md`.
+- Touch/long-press feel and animation smoothness remain **unverified on a physical device**. No device execution or screenshot is claimed from this worker.
+
 ## Version 1.1.0 — 2026-10-23
 
 - Now Playing has a gray waveform seek bar with green played amplitudes, standard Slider touch/accessibility behavior, and a white position marker. The 96-bin RMS envelope is decoded from the actual file on an IO worker, supports 16-bit/float PCM output, cancels on track change/player dismissal, and caches at most 64 small envelopes in private cache storage. Unsupported/read-failed audio keeps seeking available and shows an unavailable state; no fabricated peaks or microphone access.
